@@ -120,6 +120,8 @@ void InitializeButtons()
   pinMode(buttonPin3, INPUT_PULLUP);
 }
 
+
+
 void readButtonUpState()
 {
   if (currentMillis - previousButtonMillis > intervalButton)
