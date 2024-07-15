@@ -3,6 +3,13 @@
 #include <LiquidCrystal_I2C.h>
 #include <EEPROMex.h>
 #include "control.h"
+LiquidCrystal_I2C lcd(0x27, 20, 4);
+
+void initializeLCD()
+{
+  lcd.init(); // initialize the lcd
+  lcd.backlight();
+}
 
 // |--------------------------------------------------------------------------------------------------------------------------------------------|
 // |                                                         MENU                                                                               |
@@ -37,6 +44,10 @@ String testmachine_items[NUM_TESTMACHINE_ITEMS] = { // array with item names
     "START SEALING",
     "EXIT"};
 
+Control Conveyor(0);
+Control PneumaticCylinder(0);
+Control StartSeal(0);
+
 int SealDelayAdd = 20;
 int AfterSealDelayAdd = 30;
 
@@ -69,16 +80,16 @@ void loadSettings()
 
 void stopAll()
 {
-  // ContactorVFD.stop();
-  // RunVFD.stop();
-  // GasValve.stop();
+  Conveyor.stop();
+  PneumaticCylinder.stop();
+  StartSeal.stop();
 }
 
 void setTimers()
 {
-  // ContactorVFD.setTimer(secondsToHHMMSS(parametersTimer[0]));
-  // RunVFD.setTimer(secondsToHHMMSS(60));
-  // GasValve.setTimer(secondsToHHMMSS(60));
+  Conveyor.setTimer(secondsToHHMMSS(parametersTimer[0]));
+  PneumaticCylinder.setTimer(secondsToHHMMSS(60));
+  StartSeal.setTimer(secondsToHHMMSS(60));
 }
 
 // Button Declaration
@@ -120,8 +131,6 @@ void InitializeButtons()
   pinMode(buttonPin2, INPUT_PULLUP);
   pinMode(buttonPin3, INPUT_PULLUP);
 }
-
-
 
 void readButtonUpState()
 {
@@ -527,8 +536,169 @@ void ReadButtons()
   readButtonDownState();
 }
 
+// |--------------------------------------------------------------------------------------------------------------------------------------------|
+// |                                                         INITIALIZE METHOD                                                                  |
+// |--------------------------------------------------------------------------------------------------------------------------------------------|
+void printMainMenu(String MenuItem, String Action)
+{
+  lcd.clear();
+  lcd.print(MenuItem);
+  lcd.setCursor(0, 3);
+  lcd.write(0);
+  lcd.setCursor(2, 3);
+  lcd.print(Action);
+  refreshScreen = false;
+}
+
+void printSettingScreen(String SettingTitle, String Unit, double Value, bool EditFlag, bool SaveFlag)
+{
+  lcd.clear();
+  lcd.print(SettingTitle);
+  lcd.setCursor(0, 1);
+
+  if (SaveFlag == true)
+  {
+    lcd.setCursor(0, 3);
+    lcd.write(0);
+    lcd.setCursor(2, 3);
+    lcd.print("ENTER TO SAVE ALL");
+  }
+  else
+  {
+    lcd.print(Value);
+    lcd.print(" ");
+    lcd.print(Unit);
+    lcd.setCursor(0, 3);
+    lcd.write(0);
+    lcd.setCursor(2, 3);
+    if (EditFlag == false)
+    {
+      lcd.print("ENTER TO EDIT");
+    }
+    else
+    {
+      lcd.print("ENTER TO SAVE");
+    }
+  }
+  refreshScreen = false;
+}
+
+void printTestScreen(String TestMenuTitle, String Job, bool Status, bool ExitFlag)
+{
+  lcd.clear();
+  lcd.print(TestMenuTitle);
+  if (ExitFlag == false)
+  {
+    lcd.setCursor(0, 2);
+    lcd.print(Job);
+    lcd.print(" : ");
+    if (Status == true)
+    {
+      lcd.print("ON");
+    }
+    else
+    {
+      lcd.print("OFF");
+    }
+  }
+
+  if (ExitFlag == true)
+  {
+    lcd.setCursor(0, 3);
+    lcd.print("Click to Exit Test");
+  }
+  else
+  {
+    lcd.setCursor(0, 3);
+    lcd.print("Click to Run Test");
+  }
+  refreshScreen = false;
+}
+
+void printRunAuto(int PH, int PRESSURE, int TEMP, int COUNT)
+{
+  // lcd.clear();
+  // lcd.setCursor(0, 0);
+  // char buff[] = "hh:mm:ss DD-MM-YYYY";
+  // lcd.print(currentTime.toString(buff));
+  // lcd.setCursor(0, 1);
+  // char buff2[] = "hh:mm:ss DD-MM-YYYY";
+  // lcd.print(lastSave.toString(buff2));
+  // lcd.setCursor(0, 2);
+  // lcd.print("PH");
+  // lcd.setCursor(6, 2);
+  // lcd.print("TEMP");
+  // lcd.setCursor(11, 2);
+  // lcd.print("PSI");
+  // lcd.setCursor(16, 2);
+  // lcd.print("GAS");
+
+  // lcd.setCursor(0, 3);
+  // lcd.print(PH);
+  // lcd.setCursor(6, 3);
+  // lcd.print(TEMP);
+  // lcd.setCursor(11, 3);
+  // lcd.print(PRESSURE);
+  // lcd.setCursor(16, 3);
+  // lcd.print(COUNT);
+}
+
+void printScreens()
+{
+  if (menuFlag == false)
+  {
+    // printRunAuto(ph, pressure, temp, sensor.getCount());
+    refreshScreen = false;
+  }
+  else
+  {
+    if (settingFlag == true)
+    {
+      if (currentSettingScreen == NUM_SETTING_ITEMS - 1)
+      {
+        printSettingScreen(setting_items[currentSettingScreen][0], setting_items[currentSettingScreen][1], parametersTimer[currentSettingScreen], settingEditFlag, true);
+      }
+      else
+      {
+        printSettingScreen(setting_items[currentSettingScreen][0], setting_items[currentSettingScreen][1], parametersTimer[currentSettingScreen], settingEditFlag, false);
+      }
+    }
+    else if (testMenuFlag == true)
+    {
+      switch (currentTestMenuScreen)
+      {
+      case 0:
+        // printTestScreen(testmachine_items[currentTestMenuScreen], "Status", ContactorVFD.getMotorState(), false);
+        break;
+      case 1:
+        // printTestScreen(testmachine_items[currentTestMenuScreen], "Status", RunVFD.getMotorState(), false);
+        break;
+      case 2:
+        // printTestScreen(testmachine_items[currentTestMenuScreen], "Status", GasValve.getMotorState(), false);
+        break;
+      case 3:
+        // printTestScreen(testmachine_items[currentTestMenuScreen], "", true, true);
+        break;
+
+      default:
+        break;
+      }
+    }
+    else
+    {
+      printMainMenu(menu_items[currentMainScreen][0], menu_items[currentMainScreen][1]);
+    }
+  }
+}
+
 void setup()
 {
+  saveSettings();
+  loadSettings();
+  initializeLCD();
+  InitializeButtons();
+  Serial.begin(9600);
+  refreshScreen = true;
 }
 
 void loop()
@@ -537,6 +707,6 @@ void loop()
   ReadButtons();
   if (refreshScreen == true)
   {
-    // printScreens();
+    printScreens();
   }
 }
