@@ -17,13 +17,13 @@ void initializeLCD()
 
 // Declaration of LCD Variables
 const int NUM_MAIN_ITEMS = 3;
-const int NUM_SETTING_ITEMS = 3;
+const int NUM_SETTING_ITEMS = 4;
 const int NUM_TESTMACHINE_ITEMS = 4;
 
 int currentMainScreen;
 int currentSettingScreen;
 int currentTestMenuScreen;
-bool menuFlag, settingFlag, settingEditFlag, testMenuFlag, refreshScreen = false;
+bool runAutoFlag, settingFlag, settingEditFlag, testMenuFlag, refreshScreen = false;
 
 String menu_items[NUM_MAIN_ITEMS][2] = { // array with item names
     {"SETTING", "ENTER TO EDIT"},
@@ -31,12 +31,13 @@ String menu_items[NUM_MAIN_ITEMS][2] = { // array with item names
     {"TEST MACHINE", "ENTER TO TEST"}};
 
 String setting_items[NUM_SETTING_ITEMS][2] = { // array with item names
+    {"AFTER SENSE DELAY", "SEC"},
     {"SEALING DELAY", "SEC"},
     {"AFTER SEAL DELAY", "SEC"},
     {"SAVE SETTINGS", ""}};
 
-int parametersTimer[NUM_SETTING_ITEMS] = {1, 1};
-int parametersTimerMaxValue[NUM_SETTING_ITEMS] = {60, 60};
+int parametersTimer[NUM_SETTING_ITEMS] = {1, 1, 1};
+int parametersTimerMaxValue[NUM_SETTING_ITEMS] = {600, 600, 600};
 
 String testmachine_items[NUM_TESTMACHINE_ITEMS] = { // array with item names
     "CONVEYOR",
@@ -47,9 +48,12 @@ String testmachine_items[NUM_TESTMACHINE_ITEMS] = { // array with item names
 Control Conveyor(0);
 Control PneumaticCylinder(0);
 Control StartSeal(0);
+Control AfterSenseTimer(100);
+Control AfterSealTimer(100);
 
-int SealDelayAdd = 20;
-int AfterSealDelayAdd = 30;
+int AfterSenseDelay = 20;
+int SealDelayAdd = 30;
+int AfterSealDelayAdd = 40;
 
 char *secondsToHHMMSS(int total_seconds)
 {
@@ -68,14 +72,16 @@ char *secondsToHHMMSS(int total_seconds)
 
 void saveSettings()
 {
-  EEPROM.writeInt(SealDelayAdd, parametersTimer[0]);
-  EEPROM.writeInt(AfterSealDelayAdd, parametersTimer[1]);
+  EEPROM.writeInt(AfterSenseDelay, parametersTimer[0]);
+  EEPROM.writeInt(SealDelayAdd, parametersTimer[1]);
+  EEPROM.writeInt(AfterSealDelayAdd, parametersTimer[2]);
 }
 
 void loadSettings()
 {
-  parametersTimer[0] = EEPROM.readInt(SealDelayAdd);
-  parametersTimer[1] = EEPROM.readInt(AfterSealDelayAdd);
+  parametersTimer[0] = EEPROM.readInt(AfterSenseDelay);
+  parametersTimer[1] = EEPROM.readInt(SealDelayAdd);
+  parametersTimer[2] = EEPROM.readInt(AfterSealDelayAdd);
 }
 
 void stopAll()
@@ -87,9 +93,11 @@ void stopAll()
 
 void setTimers()
 {
-  Conveyor.setTimer(secondsToHHMMSS(parametersTimer[0]));
-  PneumaticCylinder.setTimer(secondsToHHMMSS(60));
-  StartSeal.setTimer(secondsToHHMMSS(60));
+  AfterSenseTimer.setTimer(secondsToHHMMSS(parametersTimer[0]));
+  // Conveyor.setTimer(secondsToHHMMSS(parametersTimer[0]));
+  PneumaticCylinder.setTimer(secondsToHHMMSS(parametersTimer[1]));
+  AfterSealTimer.setTimer(secondsToHHMMSS(parametersTimer[2]));
+  // StartSeal.setTimer(secondsToHHMMSS(60));
 }
 
 // Button Declaration
@@ -124,6 +132,9 @@ const int intervalButton3 = 50;
 unsigned long previousButtonMillis3;
 unsigned long buttonPressDuration3;
 unsigned long currentMillis3;
+
+unsigned long previousMillisTimerScreen;
+unsigned long currentMillisTimerScreen;
 
 void InitializeButtons()
 {
@@ -419,13 +430,7 @@ void readButtonEnterState()
     }
     if (buttonStateLongPressEnter == true)
     {
-      // // Insert Fast Scroll Enter
-      // Serial.println("Long Press Enter");
-      // if (menuFlag == false)
-      // {
-      //   refreshScreen = true;
-      //   menuFlag = true;
-      // }
+      // Insert Fast Scroll Enter
     }
 
     if (buttonState3 == HIGH && buttonStatePrevious3 == LOW)
@@ -440,10 +445,10 @@ void readButtonEnterState()
           if (currentSettingScreen == NUM_SETTING_ITEMS - 1)
           {
             settingFlag = false;
-            // saveSettings();
-            // loadSettings();
+            saveSettings();
+            loadSettings();
             currentSettingScreen = 0;
-            // setTimers();
+            setTimers();
           }
           else
           {
@@ -464,40 +469,40 @@ void readButtonEnterState()
             currentMainScreen = 0;
             currentTestMenuScreen = 0;
             testMenuFlag = false;
-            // stopAll();
+            stopAll();
           }
           else if (currentTestMenuScreen == 0)
           {
-            // if (ContactorVFD.getMotorState() == false)
-            // {
-            //   ContactorVFD.relayOn();
-            // }
-            // else
-            // {
-            //   ContactorVFD.relayOff();
-            // }
+            if (Conveyor.getMotorState() == false)
+            {
+              Conveyor.relayOn();
+            }
+            else
+            {
+              Conveyor.relayOff();
+            }
           }
           else if (currentTestMenuScreen == 1)
           {
-            // if (RunVFD.getMotorState() == false)
-            // {
-            //   RunVFD.relayOn();
-            // }
-            // else
-            // {
-            //   RunVFD.relayOff();
-            // }
+            if (PneumaticCylinder.getMotorState() == false)
+            {
+              PneumaticCylinder.relayOn();
+            }
+            else
+            {
+              PneumaticCylinder.relayOff();
+            }
           }
           else if (currentTestMenuScreen == 2)
           {
-            // if (GasValve.getMotorState() == false)
-            // {
-            //   GasValve.relayOn();
-            // }
-            // else
-            // {
-            //   GasValve.relayOff();
-            // }
+            if (StartSeal.getMotorState() == false)
+            {
+              StartSeal.relayOn();
+            }
+            else
+            {
+              StartSeal.relayOff();
+            }
           }
         }
         else
@@ -506,18 +511,12 @@ void readButtonEnterState()
           {
             settingFlag = true;
           }
-          else if (currentMainScreen == 1)
-          {
-            testMenuFlag = true;
+          else if(currentMainScreen == 1){
+            runAutoFlag == true;
           }
           else if (currentMainScreen == 2)
           {
-            // sensor.resetCount();
-            // saveCount(0);
-          }
-          else
-          {
-            menuFlag = false;
+            testMenuFlag = true;
           }
         }
       }
@@ -615,85 +614,64 @@ void printTestScreen(String TestMenuTitle, String Job, bool Status, bool ExitFla
   refreshScreen = false;
 }
 
-void printRunAuto(int PH, int PRESSURE, int TEMP, int COUNT)
+void printRunAuto(String Job, String TimeRemaining)
 {
-  // lcd.clear();
-  // lcd.setCursor(0, 0);
-  // char buff[] = "hh:mm:ss DD-MM-YYYY";
-  // lcd.print(currentTime.toString(buff));
-  // lcd.setCursor(0, 1);
-  // char buff2[] = "hh:mm:ss DD-MM-YYYY";
-  // lcd.print(lastSave.toString(buff2));
-  // lcd.setCursor(0, 2);
-  // lcd.print("PH");
-  // lcd.setCursor(6, 2);
-  // lcd.print("TEMP");
-  // lcd.setCursor(11, 2);
-  // lcd.print("PSI");
-  // lcd.setCursor(16, 2);
-  // lcd.print("GAS");
-
-  // lcd.setCursor(0, 3);
-  // lcd.print(PH);
-  // lcd.setCursor(6, 3);
-  // lcd.print(TEMP);
-  // lcd.setCursor(11, 3);
-  // lcd.print(PRESSURE);
-  // lcd.setCursor(16, 3);
-  // lcd.print(COUNT);
+  lcd.clear();
+  lcd.print("Run Auto");
+  lcd.setCursor(0, 1);
+  lcd.print("Status : ");
+  lcd.setCursor(0, 2);
+  lcd.print(Job);
+  lcd.setCursor(0, 3);
+  lcd.print(TimeRemaining);
 }
 
 void printScreens()
 {
-  if (menuFlag == false)
+  if (settingFlag == true)
   {
-    // printRunAuto(ph, pressure, temp, sensor.getCount());
-    refreshScreen = false;
-  }
-  else
-  {
-    if (settingFlag == true)
+    if (currentSettingScreen == NUM_SETTING_ITEMS - 1)
     {
-      if (currentSettingScreen == NUM_SETTING_ITEMS - 1)
-      {
-        printSettingScreen(setting_items[currentSettingScreen][0], setting_items[currentSettingScreen][1], parametersTimer[currentSettingScreen], settingEditFlag, true);
-      }
-      else
-      {
-        printSettingScreen(setting_items[currentSettingScreen][0], setting_items[currentSettingScreen][1], parametersTimer[currentSettingScreen], settingEditFlag, false);
-      }
-    }
-    else if (testMenuFlag == true)
-    {
-      switch (currentTestMenuScreen)
-      {
-      case 0:
-        // printTestScreen(testmachine_items[currentTestMenuScreen], "Status", ContactorVFD.getMotorState(), false);
-        break;
-      case 1:
-        // printTestScreen(testmachine_items[currentTestMenuScreen], "Status", RunVFD.getMotorState(), false);
-        break;
-      case 2:
-        // printTestScreen(testmachine_items[currentTestMenuScreen], "Status", GasValve.getMotorState(), false);
-        break;
-      case 3:
-        // printTestScreen(testmachine_items[currentTestMenuScreen], "", true, true);
-        break;
-
-      default:
-        break;
-      }
+      printSettingScreen(setting_items[currentSettingScreen][0], setting_items[currentSettingScreen][1], parametersTimer[currentSettingScreen], settingEditFlag, true);
     }
     else
     {
-      printMainMenu(menu_items[currentMainScreen][0], menu_items[currentMainScreen][1]);
+      printSettingScreen(setting_items[currentSettingScreen][0], setting_items[currentSettingScreen][1], parametersTimer[currentSettingScreen], settingEditFlag, false);
     }
+  }
+  else if (testMenuFlag == true)
+  {
+    switch (currentTestMenuScreen)
+    {
+    case 0:
+      printTestScreen(testmachine_items[currentTestMenuScreen], "Status", Conveyor.getMotorState(), false);
+      break;
+    case 1:
+      printTestScreen(testmachine_items[currentTestMenuScreen], "Status", PneumaticCylinder.getMotorState(), false);
+      break;
+    case 2:
+      printTestScreen(testmachine_items[currentTestMenuScreen], "Status", StartSeal.getMotorState(), false);
+      break;
+    case 3:
+      printTestScreen(testmachine_items[currentTestMenuScreen], "", true, true);
+      break;
+
+    default:
+      break;
+    }
+  }
+  else if (runAutoFlag == true)
+  {
+  }
+  else
+  {
+    printMainMenu(menu_items[currentMainScreen][0], menu_items[currentMainScreen][1]);
   }
 }
 
 void setup()
 {
-  saveSettings();
+  // saveSettings();
   loadSettings();
   initializeLCD();
   InitializeButtons();
@@ -708,5 +686,16 @@ void loop()
   if (refreshScreen == true)
   {
     printScreens();
+  }
+
+  if (runAutoFlag == true)
+  {
+    if (currentMillisTimerScreen - previousMillisTimerScreen >= 1000)
+    {
+      // save the last time you blinked the LED
+      previousMillisTimerScreen = currentMillisTimerScreen;
+      refreshScreen = true;
+    }
+    
   }
 }
