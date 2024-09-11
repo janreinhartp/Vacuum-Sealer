@@ -45,9 +45,9 @@ String testmachine_items[NUM_TESTMACHINE_ITEMS] = { // array with item names
     "START SEALING",
     "EXIT"};
 
-Control Conveyor(0);
-Control PneumaticCylinder(0);
-Control StartSeal(0);
+Control Conveyor(6);
+Control PneumaticCylinder(7);
+Control StartSeal(8);
 Control AfterSenseTimer(100);
 Control AfterSealTimer(100);
 
@@ -101,13 +101,13 @@ void setTimers()
 }
 
 // Button Declaration
-static const int buttonPin = 2;
+static const int buttonPin = 4;
 int buttonStatePrevious = HIGH;
 
-static const int buttonPin2 = 3;
+static const int buttonPin2 = 2;
 int buttonStatePrevious2 = HIGH;
 
-static const int buttonPin3 = 4;
+static const int buttonPin3 = 3;
 int buttonStatePrevious3 = HIGH;
 
 unsigned long minButtonLongPressDuration = 2000;
@@ -350,7 +350,7 @@ void readButtonDownState()
         {
           if (settingEditFlag == true)
           {
-            if (currentSettingScreen = 2)
+            if (currentSettingScreen == 2)
             {
               if (parametersTimer[currentSettingScreen] <= 2)
               {
@@ -462,7 +462,7 @@ void readButtonEnterState()
             }
           }
         }
-        else if (currentMainScreen == 1 && testMenuFlag == true)
+        else if (currentMainScreen == 2 && testMenuFlag == true)
         {
           if (currentTestMenuScreen == NUM_TESTMACHINE_ITEMS - 1)
           {
@@ -511,8 +511,9 @@ void readButtonEnterState()
           {
             settingFlag = true;
           }
-          else if(currentMainScreen == 1){
-            runAutoFlag == true;
+          else if (currentMainScreen == 1)
+          {
+            runAutoFlag = true;
           }
           else if (currentMainScreen == 2)
           {
@@ -624,10 +625,12 @@ void printRunAuto(String Job, String TimeRemaining)
   lcd.print(Job);
   lcd.setCursor(0, 3);
   lcd.print(TimeRemaining);
+  refreshScreen = false;
 }
 
 void printScreens()
 {
+  // refreshScreen = false;
   if (settingFlag == true)
   {
     if (currentSettingScreen == NUM_SETTING_ITEMS - 1)
@@ -685,6 +688,7 @@ void loop()
   ReadButtons();
   if (refreshScreen == true)
   {
+    lcd.clear();
     printScreens();
   }
 
@@ -696,6 +700,11 @@ void loop()
       previousMillisTimerScreen = currentMillisTimerScreen;
       refreshScreen = true;
     }
-    
   }
+// currentMillisTimerScreen = millis();
+//   if (currentMillisTimerScreen - previousMillisTimerScreen >= 1000)
+//   {
+//     // save the last time you blinked the LED
+//     Serial.println("Test Run");
+//   }
 }
